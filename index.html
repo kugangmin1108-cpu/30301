@@ -1,354 +1,282 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI TTS 음성 변환기</title>
-  <style>
-    * { box-sizing: border-box; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 전기 안전 진단기</title>
 
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #e3f2fd, #fce4ec);
-      font-family: Arial, sans-serif;
-      color: #333;
-    }
+<style>
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
 
-    .container {
-      width: min(900px, 92%);
-      margin: 40px auto;
-      background: #ffffff;
-      border-radius: 24px;
-      padding: 28px;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.16);
-    }
+body{
+  font-family:Arial,sans-serif;
+  background:linear-gradient(135deg,#e3f2fd,#fce4ec);
+  min-height:100vh;
+  padding:30px;
+}
 
-    h1 {
-      margin: 0 0 8px;
-      text-align: center;
-      font-size: 28px;
-    }
+.container{
+  max-width:900px;
+  margin:auto;
+  background:white;
+  padding:30px;
+  border-radius:20px;
+  box-shadow:0 10px 30px rgba(0,0,0,.15);
+}
 
-    .subtitle {
-      text-align: center;
-      color: #777;
-      margin-bottom: 24px;
-      font-size: 14px;
-    }
+h1{
+  text-align:center;
+  margin-bottom:10px;
+}
 
-    .info {
-      padding: 14px;
-      margin-bottom: 20px;
-      border-radius: 14px;
-      background: #e8f5e9;
-      color: #2e7d32;
-      font-size: 14px;
-      line-height: 1.6;
-    }
+.subtitle{
+  text-align:center;
+  color:#666;
+  margin-bottom:30px;
+}
 
-    .option-box {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 14px;
-    }
+.card{
+  background:#f7f9fb;
+  padding:20px;
+  border-radius:15px;
+  margin-bottom:20px;
+}
 
-    select, input {
-      height: 44px;
-      padding: 0 12px;
-      border: 1px solid #ddd;
-      border-radius: 12px;
-      font-size: 14px;
-      outline: none;
-    }
+input,
+textarea{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border:1px solid #ddd;
+  border-radius:10px;
+}
 
-    textarea {
-      width: 100%;
-      min-height: 180px;
-      resize: vertical;
-      padding: 16px;
-      border: 1px solid #ddd;
-      border-radius: 16px;
-      font-size: 16px;
-      line-height: 1.5;
-      outline: none;
-      font-family: Arial, sans-serif;
-    }
+textarea{
+  min-height:150px;
+  resize:vertical;
+}
 
-    textarea:focus, select:focus, input:focus {
-      border-color: #42a5f5;
-      box-shadow: 0 0 0 3px rgba(66, 165, 245, 0.15);
-    }
+button{
+  border:none;
+  padding:12px 20px;
+  border-radius:10px;
+  cursor:pointer;
+  color:white;
+  font-weight:bold;
+}
 
-    .label {
-      font-weight: bold;
-      margin-bottom: 6px;
-    }
+.login-btn{
+  background:#42a5f5;
+}
 
-    .button-row {
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-      flex-wrap: wrap;
-      margin-top: 14px;
-    }
+.signup-btn{
+  background:#7e57c2;
+}
 
-    button, .download-link {
-      border: none;
-      border-radius: 12px;
-      padding: 0 18px;
-      height: 46px;
-      font-size: 15px;
-      cursor: pointer;
-      transition: 0.15s;
-      font-weight: bold;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
+.analyze-btn{
+  background:#ef6c00;
+}
 
-    button:hover, .download-link:hover {
-      transform: translateY(-2px);
-      opacity: 0.9;
-    }
+.tts-btn{
+  background:#26a69a;
+}
 
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.6;
-      transform: none;
-    }
+.save-btn{
+  background:#43a047;
+}
 
-    .make-btn {
-      background: #42a5f5;
-      color: white;
-    }
+.button-row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:15px;
+}
 
-    .clear-btn {
-      background: #b0bec5;
-      color: white;
-    }
+.result{
+  margin-top:15px;
+  padding:15px;
+  border-radius:10px;
+  background:white;
+  border:1px solid #ddd;
+  white-space:pre-wrap;
+}
 
-    .download-link {
-      background: #7e57c2;
-      color: white;
-    }
-
-    .hidden { display: none; }
-
-    .status {
-      min-height: 24px;
-      margin-top: 14px;
-      color: #555;
-      font-size: 14px;
-    }
-
-    .result-box {
-      margin-top: 20px;
-      padding: 18px;
-      border-radius: 18px;
-      background: #f7f9fb;
-      border: 1px solid #edf1f5;
-    }
-
-    audio {
-      width: 100%;
-      margin-top: 10px;
-    }
-
-    .help {
-      margin-top: 12px;
-      font-size: 13px;
-      color: #777;
-      line-height: 1.6;
-    }
-
-    @media (max-width: 700px) {
-      .option-box { grid-template-columns: 1fr; }
-      .button-row { justify-content: stretch; }
-      button, .download-link { width: 100%; }
-    }
-  </style>
+.record{
+  background:white;
+  border:1px solid #ddd;
+  border-radius:10px;
+  padding:10px;
+  margin-top:10px;
+}
+</style>
 </head>
+
 <body>
-  <div class="container">
-    <h1>AI TTS 음성 변환기</h1>
-    <div class="subtitle">텍스트를 AI 음성 mp3 파일로 변환합니다</div>
 
-    <div class="info">
-      현재 구조: GitHub Pages 화면 → Google Apps Script 서버 → OpenAI TTS API → mp3 음성 반환<br />
-      API Key는 index.html에 들어가지 않고 Apps Script의 스크립트 속성에 저장됩니다.
-    </div>
+<div class="container">
 
-    <div class="option-box">
-      <select id="modelSelect">
-        <option value="tts-1">tts-1 빠른 생성</option>
-        <option value="tts-1-hd">tts-1-hd 고품질</option>
-      </select>
+<h1>⚡ AI 전기 안전 진단기</h1>
+<div class="subtitle">
+전기 사용 상황을 입력하면 AI가 위험도를 분석합니다.
+</div>
 
-      <select id="voiceSelect">
-        <option value="alloy">alloy</option>
-        <option value="echo">echo</option>
-        <option value="fable">fable</option>
-        <option value="onyx">onyx</option>
-        <option value="nova">nova</option>
-        <option value="shimmer">shimmer</option>
-      </select>
+<div class="card">
 
-      <input id="speedInput" type="number" min="0.25" max="4.0" step="0.05" value="1.0" placeholder="속도" />
-    </div>
+<h2>로그인</h2>
 
-    <div>
-      <div class="label">변환할 텍스트</div>
-      <textarea id="textInput" placeholder="음성으로 바꿀 문장을 입력하세요. 예: 안녕하세요. 오늘은 Firebase와 OpenAI API를 활용한 웹페이지 제작을 배워보겠습니다."></textarea>
-    </div>
+<input type="email" placeholder="이메일">
 
-    <div class="button-row">
-      <button class="clear-btn" id="clearBtn">초기화</button>
-      <button class="make-btn" id="makeBtn">음성 만들기</button>
-    </div>
+<input type="password" placeholder="비밀번호">
 
-    <div id="status" class="status"></div>
+<div class="button-row">
+<button class="login-btn">로그인</button>
+<button class="signup-btn">회원가입</button>
+</div>
 
-    <div id="resultBox" class="result-box hidden">
-      <div class="label">생성된 음성</div>
-      <audio id="audioPlayer" controls></audio>
-      <div class="button-row">
-        <a id="downloadLink" class="download-link" href="#" download="tts-audio.mp3">mp3 다운로드</a>
-      </div>
-    </div>
+</div>
 
-    <div class="help">
-      긴 문장은 생성 시간이 오래 걸릴 수 있습니다. 처음에는 짧은 문장으로 테스트해보세요.<br />
-      속도는 0.25부터 4.0까지 조절할 수 있습니다.
-    </div>
-  </div>
+<div class="card">
 
-  <script>
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxzvCeCidpIBm3Ez_AbmzTRrvzCkPa_7x-irAazDPzljPmuqjjHZOqXxfyS1vNh7tX1/exec';
+<h2>전기 사용 상황 입력</h2>
 
-    const textInput = document.getElementById('textInput');
-    const modelSelect = document.getElementById('modelSelect');
-    const voiceSelect = document.getElementById('voiceSelect');
-    const speedInput = document.getElementById('speedInput');
-    const makeBtn = document.getElementById('makeBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const statusBox = document.getElementById('status');
-    const resultBox = document.getElementById('resultBox');
-    const audioPlayer = document.getElementById('audioPlayer');
-    const downloadLink = document.getElementById('downloadLink');
+<input
+id="title"
+placeholder="상황 제목 (예: 멀티탭 사용)"
+>
 
-    makeBtn.addEventListener('click', makeSpeech);
-    clearBtn.addEventListener('click', clearPage);
+<textarea
+id="situation"
+placeholder="예: 멀티탭에 전기포트와 전기장판을 동시에 연결했습니다."
+></textarea>
 
-    textInput.addEventListener('keydown', function(event) {
-      if (event.key === 'Enter' && event.ctrlKey) {
-        makeSpeech();
-      }
-    });
+<div class="button-row">
+<button
+class="analyze-btn"
+onclick="analyzeSituation()">
+AI 진단하기
+</button>
+</div>
 
-    async function makeSpeech() {
-      const text = textInput.value.trim();
-      const model = modelSelect.value;
-      const voice = voiceSelect.value;
-      const speed = Number(speedInput.value || 1.0);
+<div
+id="result"
+class="result">
+아직 진단 결과가 없습니다.
+</div>
 
-      if (!text) {
-        alert('음성으로 변환할 텍스트를 입력해주세요.');
-        return;
-      }
+<div class="button-row">
 
-      if (speed < 0.25 || speed > 4.0) {
-        alert('속도는 0.25부터 4.0 사이로 입력해주세요.');
-        return;
-      }
+<button
+class="tts-btn"
+onclick="playTTS()">
+🔊 음성 듣기
+</button>
 
-      try {
-        setLoading(true);
-        resultBox.classList.add('hidden');
-        statusBox.textContent = 'Apps Script 서버에 TTS 요청을 보내는 중입니다.';
+<button
+class="save-btn"
+onclick="saveRecord()">
+결과 저장
+</button>
 
-        const response = await fetch(APPS_SCRIPT_URL, {
-          method: 'POST',
-          body: JSON.stringify({
-            type: 'tts',
-            text: text,
-            model: model,
-            voice: voice,
-            speed: speed
-          })
-        });
+</div>
 
-        const data = await response.json();
+</div>
 
-        if (data.error) {
-          throw new Error(data.error);
-        }
+<div class="card">
 
-        if (!data.audioBase64) {
-          throw new Error('음성 데이터를 받지 못했습니다.');
-        }
+<h2>진단 기록</h2>
 
-        const audioUrl = base64ToAudioUrl(data.audioBase64, 'audio/mpeg');
+<div id="records">
 
-        audioPlayer.src = audioUrl;
-        downloadLink.href = audioUrl;
-        downloadLink.download = makeFileName();
-        resultBox.classList.remove('hidden');
-        statusBox.textContent = '음성 생성 완료';
-      } catch (error) {
-        console.error(error);
-        statusBox.textContent = '요청 실패';
-        alert('오류가 발생했습니다.\n\n' + error.message);
-      } finally {
-        setLoading(false);
-      }
-    }
+<div class="record">
+저장된 기록이 없습니다.
+</div>
 
-    function base64ToAudioUrl(base64, mimeType) {
-      const byteCharacters = atob(base64);
-      const byteArrays = [];
+</div>
 
-      for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-        const slice = byteCharacters.slice(offset, offset + 512);
-        const byteNumbers = new Array(slice.length);
+</div>
 
-        for (let i = 0; i < slice.length; i++) {
-          byteNumbers[i] = slice.charCodeAt(i);
-        }
+</div>
 
-        const byteArray = new Uint8Array(byteNumbers);
-        byteArrays.push(byteArray);
-      }
+<script>
 
-      const blob = new Blob(byteArrays, { type: mimeType });
-      return URL.createObjectURL(blob);
-    }
+let currentResult="";
 
-    function makeFileName() {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const hour = String(now.getHours()).padStart(2, '0');
-      const minute = String(now.getMinutes()).padStart(2, '0');
-      return `tts-${year}${month}${day}-${hour}${minute}.mp3`;
-    }
+async function analyzeSituation(){
 
-    function setLoading(isLoading) {
-      makeBtn.disabled = isLoading;
-      makeBtn.textContent = isLoading ? '생성 중...' : '음성 만들기';
-    }
+  const text=
+  document.getElementById("situation").value;
 
-    function clearPage() {
-      textInput.value = '';
-      statusBox.textContent = '';
-      audioPlayer.removeAttribute('src');
-      downloadLink.href = '#';
-      resultBox.classList.add('hidden');
-    }
-  </script>
+  if(!text){
+    alert("상황을 입력하세요.");
+    return;
+  }
+
+  // 나중에 ChatGPT API 연결
+
+  currentResult=
+`위험도 : 높음
+
+원인 :
+고전력 기기를 동시에 사용하고 있습니다.
+
+예방 방법 :
+1. 벽면 콘센트 분산 사용
+2. 노후 멀티탭 교체
+3. 정격전류 확인`;
+
+  document.getElementById("result").innerText=
+  currentResult;
+
+}
+
+function playTTS(){
+
+  if(!currentResult){
+    alert("먼저 진단하세요.");
+    return;
+  }
+
+  const speech=
+  new SpeechSynthesisUtterance(
+    currentResult
+  );
+
+  speech.lang="ko-KR";
+
+  speechSynthesis.speak(speech);
+
+}
+
+function saveRecord(){
+
+  if(!currentResult){
+    alert("먼저 진단하세요.");
+    return;
+  }
+
+  const div=
+  document.createElement("div");
+
+  div.className="record";
+
+  div.innerHTML=
+  `
+  <strong>${document.getElementById("title").value}</strong>
+  <br><br>
+  ${currentResult}
+  `;
+
+  document
+  .getElementById("records")
+  .prepend(div);
+
+}
+
+</script>
+
 </body>
 </html>
-
