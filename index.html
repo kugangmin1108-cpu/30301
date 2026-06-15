@@ -172,9 +172,9 @@
       measurementId: 'G-DJ52YTYQZM'
     };
 
-    // [수정 완료] 새로 주신 신규 배포 URL 주소로 변경을 완료했습니다.
-    const APPS_SCRIPT_AI_URL = 'https://script.google.com/macros/s/AKfycbxUzzfpGKHL5y81V0li5Tq9ILviIk6UjTsO2RwCWMPXCSpuGDwRCS0g5L4Ejz2uW42-/exec';
-    const APPS_SCRIPT_TTS_URL = 'https://script.google.com/macros/s/AKfycbxUzzfpGKHL5y81V0li5Tq9ILviIk6UjTsO2RwCWMPXCSpuGDwRCS0g5L4Ejz2uW42-/exec';
+    // [변경 완료] 새로 주신 최신 Apps Script 배포 URL로 매칭했습니다.
+    const APPS_SCRIPT_AI_URL = 'https://script.google.com/macros/s/AKfycbye4-9Yy0lNX1-QHXNc3lb-BdAiqSlS2g0dYunqm_zbTWFlsisqBvaQDgy24xo2bgl1vA/exec';
+    const APPS_SCRIPT_TTS_URL = 'https://script.google.com/macros/s/AKfycbye4-9Yy0lNX1-QHXNc3lb-BdAiqSlS2g0dYunqm_zbTWFlsisqBvaQDgy24xo2bgl1vA/exec';
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -260,4 +260,176 @@
       if (!currentUser || !lastGeneratedAnswer) return;
       const titlePrompt = prompt("이 보관글의 제목을 정해주세요:", "AI 요약본 - " + new Date().toLocaleDateString());
       if (titlePrompt === null) return;
-      await push
+      await pushToFirebase(titlePrompt.trim() || "무제", lastGeneratedAnswer);
+    });
+
+    manualAddBtn.addEventListener('click', async () => {
+      const title = manualTitle.value.trim(); const content = manualContent.value.trim();
+      if (!title || !content) { alert('제목과 내용을 모두 입력해 주세요.'); return; }
+      await pushToFirebase(title, content); manualTitle.value = ''; manualContent.value = '';
+    });
+
+    async function pushToFirebase(title, content) {
+      try {
+        const itemsRef = ref(database, `users/${currentUser.uid}/items`);
+        await set(push(itemsRef), { title, content, createdAt: new Date().toLocaleString('ko-KR'), updatedAt: '' });
+        alert('보관함에 저장되었습니다!');
+      } catch (e) { alert('보관함 저장 실패'); }
+    }
+
+    window.deleteData = async function(id) {
+      if (!confirm('정말 삭제하시겠습니까?')) return;
+      try { await remove(ref(database, `users/${currentUser.uid}/items/${id}`)); } catch (e) { alert('삭제 실패'); }
+    };
+
+    window.showEditForm = function(id, title, content) {
+      const target = document.getElementById(`item-${id}`);
+      target.innerHTML = `
+        <div class="edit-box">
+          <input id="edit-title-${id}" type="text" value="${title}" style="width: 100%;" />
+          <textarea id="edit-content-${id}" style="width: 100%; min-height: 80px;">${content}</textarea>
+          <div class="item-actions">
+            <button class="save-btn" onclick="updateData('${id}')">완료</button>
+            <button class="cancel-btn" onclick="startRealtimeListener(currentUser.uid)">취소</button>
+          </div>
+        </div>`;
+    };
+
+    window.updateData = async function(id) {
+      const nextTitle = document.getElementById(`edit-title-${id}`).value.trim();
+      const nextContent = document.getElementById(`edit-content-${id}`).value.trim();
+      if (!nextTitle || !nextContent) { alert('내용을 채워주세요.'); return; }
+      try { await update(ref(database, `users/${currentUser.uid}/items/${id}`), { title: nextTitle, content: nextContent, updatedAt: new Date().toLocaleString('ko-KR') }); } 
+      catch { alert('수정 실패'); }
+    };
+
+    function renderData(data) {
+      dataList.innerHTML = '';
+      if (!data) { dataList.innerHTML = '<div class="empty">📭 보관함이 비어 있습니다.</div>'; return; }
+      Object.entries(data).reverse().forEach(([id, item]) => {
+        const div = document.createElement('div'); div.className = 'item'; div.id = `item-${id}`;
+        div.innerHTML = `
+          <div>
+            <p class="item-title">${escapeHTML(item.title || '')}</p>
+            <p class="item-content">${escapeHTML(item.content || '')}</p>
+            <div class="item-date">⏱️ 등록: ${item.createdAt || '-'} ${item.updatedAt ? ` / ✏️ 수정: ${item.updatedAt}` : ''}</div>
+          </div>
+          <div class="item-actions">
+            <button class="edit-btn" onclick="showEditForm('${id}', '${escapeForAttribute(item.title || '')}', '${escapeForAttribute(item.content || '')}')">수정</button>
+            <button class="delete-btn" onclick="deleteData('${id}')">삭제</button>
+          </div>`;
+        dataList.appendChild(div);
+      });
+    }
+
+    /* ====================================================================
+       AI ChatGPT 연동 로직
+       ==================================================================== */
+    askBtn.addEventListener('click', askChatGPT);
+
+    async function askChatGPT() {
+      const question = questionInput.value.trim();
+      if (!question) { alert('질문을 입력해주세요.'); return; }
+
+      try {
+        setAiLoading(true);
+        answerBox.textContent = '답변을 생성하는 중입니다. 잠시만 기다려 주세요...';
+        aiStatus.textContent = '📡 서버 통신 중...';
+
+        const res = await fetch(APPS_SCRIPT_AI_URL, {
+          method: 'POST',
+          body: JSON.stringify({ question: question })
+        });
+
+        const resultData = await res.json();
+        
+        if (resultData.error) {
+          let errorMsg = resultData.error;
+          if (errorMsg.includes("401") || errorMsg.toLowerCase().includes("api key")) {
+            errorMsg = "[인증 오류 401] OpenAI API Key 설정이 잘못되었습니다. Apps Script 코드 내부의 키값 혹은 프로젝트 설정을 확인하고 반드시 [새 버전으로 배포] 해야 합니다.";
+          }
+          throw new Error(errorMsg);
+        }
+
+        lastGeneratedAnswer = resultData.answer || '답변을 가져오지 못했습니다.';
+        answerBox.textContent = lastGeneratedAnswer;
+        aiStatus.textContent = '💡 답변 생성 완료!';
+        saveToDbBtn.disabled = false;
+        makeSpeechBtn.disabled = false;
+      } catch (err) {
+        console.error(err);
+        answerBox.textContent = '❌ 문제가 발생했습니다.\n\n' + err.message;
+        aiStatus.textContent = '❌ 에러 발생';
+      } finally {
+        setAiLoading(false);
+      }
+    }
+
+    function setAiLoading(status) { askBtn.disabled = status; askBtn.textContent = status ? '처리 중...' : 'AI 질문하기'; }
+
+    /* ====================================================================
+       AI TTS 음성 재생 로직
+       ==================================================================== */
+    makeSpeechBtn.addEventListener('click', makeSpeech);
+
+    async function makeSpeech() {
+      if (!lastGeneratedAnswer) return;
+      const speed = Number(speedInput.value || 1.0);
+      if (speed < 0.25 || speed > 4.0) { alert('속도는 0.25에서 4.0 사이로 지정하세요.'); return; }
+
+      try {
+        makeSpeechBtn.disabled = true; makeSpeechBtn.textContent = '🔊 음성 변환 중...';
+        audioResult.classList.add('hidden'); aiStatus.textContent = '🎬 오디오 인코딩 중...';
+
+        const res = await fetch(APPS_SCRIPT_TTS_URL, {
+          method: 'POST',
+          body: JSON.stringify({ type: 'tts', text: lastGeneratedAnswer, model: modelSelect.value, voice: voiceSelect.value, speed: speed })
+        });
+
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        if (!data.audioBase64) throw new Error('음성 데이터 추출에 실패했습니다.');
+
+        const audioUrl = base64ToAudioUrl(data.audioBase64, 'audio/mpeg');
+        audioPlayer.src = audioUrl; downloadLink.href = audioUrl;
+        downloadLink.download = `tts-${new Date().toISOString().slice(0,10)}.mp3`;
+        
+        audioResult.classList.remove('hidden'); aiStatus.textContent = '🎵 음성 재생 준비 완료!';
+      } catch (e) { alert('음성 변환 실패:\n' + e.message); aiStatus.textContent = '❌ TTS 에러'; } 
+      finally { makeSpeechBtn.disabled = false; makeSpeechBtn.textContent = '🎧 답변을 음성으로 듣기'; }
+    }
+
+    function base64ToAudioUrl(base64, mimeType) {
+      const byteCharacters = atob(base64); const byteArrays = [];
+      for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+        const slice = byteCharacters.slice(offset, offset + 512); const byteNumbers = new Array(slice.length);
+        for (let i = 0; i < slice.length; i++) { byteNumbers[i] = slice.charCodeAt(i); }
+        byteArrays.push(new Uint8Array(byteNumbers));
+      }
+      return URL.createObjectURL(new Blob(byteArrays, { type: mimeType }));
+    }
+
+    clearBtn.addEventListener('click', clearPage);
+    function clearPage() {
+      questionInput.value = ''; answerBox.textContent = '질문을 입력하면 여기에 답변이 나타납니다.';
+      aiStatus.textContent = '대기 중'; lastGeneratedAnswer = "";
+      saveToDbBtn.disabled = true; makeSpeechBtn.disabled = true;
+      audioPlayer.removeAttribute('src'); audioResult.classList.add('hidden');
+    }
+
+    function escapeHTML(text) { return String(text).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;'); }
+    function escapeForAttribute(text) { return escapeHTML(text).replaceAll('`', '&#096;'); }
+    function getKoreanErrorMessage(code) {
+      switch (code) {
+        case 'auth/email-already-in-use': return '이미 가입된 이메일 계정입니다.';
+        case 'auth/invalid-email': return '이메일 형식이 유효하지 않습니다.';
+        case 'auth/weak-password': return '비밀번호가 취약합니다. 6자 이상으로 설정하세요.';
+        case 'auth/invalid-credential': return '이메일 주소 또는 패스워드가 다릅니다.';
+        default: return `에러 발생 코드: ${code}`;
+      }
+    }
+
+    document.addEventListener('keydown', function(e) { if (e.key === 'Enter' && e.ctrlKey && document.activeElement === questionInput) { askChatGPT(); } });
+  </script>
+</body>
+</html>
