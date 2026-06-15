@@ -53,7 +53,6 @@
     .flex-row { display: flex; gap: 10px; margin-bottom: 12px; }
     .status { min-height: 24px; margin: 10px 0; color: #666; font-size: 13px; font-style: italic; }
     .answer-box { min-height: 140px; padding: 14px; border-radius: 12px; background: #f1f5f9; border: 1px solid #e2e8f0; line-height: 1.6; white-space: pre-wrap; word-break: break-word; margin-bottom: 12px; font-size: 14px; }
-    .error-alert { background: #ffebee !important; border: 1px solid #ef5350 !important; color: #c62828 !important; }
     .tts-controls { background: #fff3e0; padding: 12px; border-radius: 12px; margin-top: 10px; }
     .tts-grid { display: grid; grid-template-columns: 1fr 1fr 80px; gap: 8px; margin-bottom: 8px; }
     audio { width: 100%; margin-top: 8px; }
@@ -72,7 +71,7 @@
 <body>
   <div class="container">
     <h1>AI & Firebase 통합 대시보드</h1>
-    <div class="subtitle">Authentication + Realtime DB + ChatGPT 연동 + TTS 음성 변환 (직접 연동)</div>
+    <div class="subtitle">Authentication + Realtime DB + ChatGPT 연동 + TTS 음성 변환</div>
 
     <section id="authSection">
       <div class="auth-box">
@@ -162,7 +161,6 @@
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
     import { getDatabase, ref, push, set, update, remove, onValue, off } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
 
-    // Firebase 정보 설정
     const firebaseConfig = {
       apiKey: 'AIzaSyDO-v52Ehwphh5gW0WBzu9_DliMhOzy4Yo',
       authDomain: 'kang-f4e85.firebaseapp.com',
@@ -174,9 +172,9 @@
       measurementId: 'G-DJ52YTYQZM'
     };
 
-    // ★ 여기에 새로 발급받으신 OpenAI API Key를 직접 입력하세요! ★
-    const OPENAI_API_KEY = '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
-';
+    // [수정 완료] 새로 발급받으신 통합 Apps Script 주소로 양쪽 다 매칭했습니다.
+    const APPS_SCRIPT_AI_URL = 'https://script.google.com/macros/s/AKfycbyKG9Ca5aP6WQ99xxMd08H02Efjh8gW2ubBHfO_qY2pBScDa57a90YB6z7VatE5M291PA/exec';
+    const APPS_SCRIPT_TTS_URL = 'https://script.google.com/macros/s/AKfycbyKG9Ca5aP6WQ99xxMd08H02Efjh8gW2ubBHfO_qY2pBScDa57a90YB6z7VatE5M291PA/exec';
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -280,7 +278,7 @@
     }
 
     window.deleteData = async function(id) {
-      if (!confirm('정말 삭제하시겠습니까?')) return;
+      if (!confirm('정날 삭제하시겠습니까?')) return;
       try { await remove(ref(database, `users/${currentUser.uid}/items/${id}`)); } catch (e) { alert('삭제 실패'); }
     };
 
@@ -325,51 +323,42 @@
     }
 
     /* ====================================================================
-       [변경 완료] 브라우저에서 OpenAI로 직접 ChatGPT 질문 전송
+       AI ChatGPT 연동 로직 (에러 감지 보완)
        ==================================================================== */
     askBtn.addEventListener('click', askChatGPT);
 
     async function askChatGPT() {
       const question = questionInput.value.trim();
       if (!question) { alert('질문을 입력해주세요.'); return; }
-      if (OPENAI_API_KEY === 'YOUR_OPENAI_API_KEY_HERE' || !OPENAI_API_KEY) {
-        alert("코드 내부의 'YOUR_OPENAI_API_KEY_HERE' 부분을 실제 본인의 OpenAI API Key로 교체해 주세요.");
-        return;
-      }
 
       try {
         setAiLoading(true);
-        answerBox.classList.remove('error-alert');
-        answerBox.textContent = 'OpenAI 서버로부터 답변을 가져오는 중입니다...';
-        aiStatus.textContent = '📡 OpenAI와 직접 통신 중...';
+        answerBox.textContent = '답변을 생성하는 중입니다. 잠시만 기다려 주세요...';
+        aiStatus.textContent = '📡 서버 통신 중...';
 
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        const res = await fetch(APPS_SCRIPT_AI_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini', // 가성비가 좋은 최신 모델 사용
-            messages: [{ role: 'user', content: question }]
-          })
+          body: JSON.stringify({ question: question })
         });
 
         const resultData = await res.json();
         
         if (resultData.error) {
-          throw new Error(resultData.error.message || 'API 요청 오류 발생');
+          let errorMsg = resultData.error;
+          if (errorMsg.includes("401") || errorMsg.toLowerCase().includes("api key")) {
+            errorMsg = "[인증 오류 401] OpenAI API Key 설정이 잘못되었습니다. Apps Script '스크립트 속성' 메뉴에서 새 API Key를 다시 등록하고 꼭 [새 버전으로 배포] 해주세요.";
+          }
+          throw new Error(errorMsg);
         }
 
-        lastGeneratedAnswer = resultData.choices[0].message.content || '답변을 가져오지 못했습니다.';
+        lastGeneratedAnswer = resultData.answer || '답변을 가져오지 못했습니다.';
         answerBox.textContent = lastGeneratedAnswer;
         aiStatus.textContent = '💡 답변 생성 완료!';
         saveToDbBtn.disabled = false;
         makeSpeechBtn.disabled = false;
       } catch (err) {
         console.error(err);
-        answerBox.classList.add('error-alert');
-        answerBox.textContent = '❌ 에러가 발생했습니다.\n\n' + err.message;
+        answerBox.textContent = '❌ 문제가 발생했습니다.\n\n' + err.message;
         aiStatus.textContent = '❌ 에러 발생';
       } finally {
         setAiLoading(false);
@@ -379,7 +368,7 @@
     function setAiLoading(status) { askBtn.disabled = status; askBtn.textContent = status ? '처리 중...' : 'AI 질문하기'; }
 
     /* ====================================================================
-       [변경 완료] 브라우저에서 OpenAI로 직접 TTS 음성 생성
+       AI TTS 음성 재생 로직
        ==================================================================== */
     makeSpeechBtn.addEventListener('click', makeSpeech);
 
@@ -390,48 +379,39 @@
 
       try {
         makeSpeechBtn.disabled = true; makeSpeechBtn.textContent = '🔊 음성 변환 중...';
-        audioResult.classList.add('hidden'); aiStatus.textContent = '🎬 오디오 다운로드 중...';
+        audioResult.classList.add('hidden'); aiStatus.textContent = '🎬 오디오 인코딩 중...';
 
-        const res = await fetch('https://api.openai.com/v1/audio/speech', {
+        const res = await fetch(APPS_SCRIPT_TTS_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: modelSelect.value,
-            input: lastGeneratedAnswer,
-            voice: voiceSelect.value,
-            speed: speed
-          })
+          body: JSON.stringify({ type: 'tts', text: lastGeneratedAnswer, model: modelSelect.value, voice: voiceSelect.value, speed: speed })
         });
 
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.error?.message || 'TTS 음성 합성에 실패했습니다.');
-        }
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        if (!data.audioBase64) throw new Error('음성 데이터 추출에 실패했습니다.');
 
-        // 받아온 바이너리 데이터를 직접 Blob 객체 URL로 생성하여 주입
-        const blob = await res.blob();
-        const audioUrl = URL.createObjectURL(blob);
-        
+        const audioUrl = base64ToAudioUrl(data.audioBase64, 'audio/mpeg');
         audioPlayer.src = audioUrl; downloadLink.href = audioUrl;
         downloadLink.download = `tts-${new Date().toISOString().slice(0,10)}.mp3`;
         
         audioResult.classList.remove('hidden'); aiStatus.textContent = '🎵 음성 재생 준비 완료!';
-      } catch (e) { 
-        alert('음성 변환 실패:\n' + e.message); 
-        aiStatus.textContent = '❌ TTS 에러'; 
-      } finally { 
-        makeSpeechBtn.disabled = false; 
-        makeSpeechBtn.textContent = '🎧 답변을 음성으로 듣기'; 
+      } catch (e) { alert('음성 변환 실패:\n' + e.message); aiStatus.textContent = '❌ TTS 에러'; } 
+      finally { makeSpeechBtn.disabled = false; makeSpeechBtn.textContent = '🎧 답변을 음성으로 듣기'; }
+    }
+
+    function base64ToAudioUrl(base64, mimeType) {
+      const byteCharacters = atob(base64); const byteArrays = [];
+      for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+        const slice = byteCharacters.slice(offset, offset + 512); const byteNumbers = new Array(slice.length);
+        for (let i = 0; i < slice.length; i++) { byteNumbers[i] = slice.charCodeAt(i); }
+        byteArrays.push(new Uint8Array(byteNumbers));
       }
+      return URL.createObjectURL(new Blob(byteArrays, { type: mimeType }));
     }
 
     clearBtn.addEventListener('click', clearPage);
     function clearPage() {
       questionInput.value = ''; answerBox.textContent = '질문을 입력하면 여기에 답변이 나타납니다.';
-      answerBox.classList.remove('error-alert');
       aiStatus.textContent = '대기 중'; lastGeneratedAnswer = "";
       saveToDbBtn.disabled = true; makeSpeechBtn.disabled = true;
       audioPlayer.removeAttribute('src'); audioResult.classList.add('hidden');
