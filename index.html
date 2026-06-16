@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI & Firebase 통합 관리 대시보드</title>
+  <title>스마트 전력 관리 및 AI 음성 안내 대시보드</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -70,7 +70,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>AI & Firebase 통합 대시보드</h1>
+    <h1>스마트 전력 관리 및 AI 음성 안내 대시보드</h1>
     <div class="subtitle">Authentication + Realtime DB + ChatGPT 연동 + TTS 음성 변환</div>
 
     <section id="authSection">
@@ -161,7 +161,6 @@
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
     import { getDatabase, ref, push, set, update, remove, onValue, off } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
 
-    // [변경 완료] 너의 새로운 파이어베이스 계정 정보로 완벽하게 교체 완료했습니다!
     const firebaseConfig = {
       apiKey: "AIzaSyC2SWVwBnkC2eJ-Yi7OpCX3azpMj32u608",
       authDomain: "project-3640189999940461860.firebaseapp.com",
